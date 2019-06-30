@@ -1,0 +1,26 @@
+{
+  "name": "hangman",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsc --outDir dist --watch",
+    "build": "tsc -w  --outDir build src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "lodash": "^4.17.11",
+    "qs": "^6.7.0"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/lodash": "^4.14.134",
+    "@types/node": "^12.0.10",
+    "@types/qs": "^6.5.3",
+    "nodemon": "^1.19.1",
+    "typescript": "^3.5.2"
+  }
+}
