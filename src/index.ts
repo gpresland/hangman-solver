@@ -11,14 +11,16 @@ async function init() {
 
   while (!solver.isSolved) {
     const bestGuess = solver.getMostCommonLetter();
-    await solver.guess(bestGuess);
+    const isCorrectGuess = await solver.guess(bestGuess);
 
     console.log('Guessing:', bestGuess);
+    console.log('Guess was: ', isCorrectGuess ? 'Correct' : 'Incorrect');
     console.log('Word is:', solver.word);
     console.log('Remaining Words:', solver.remainingWords.length);
     console.log('Letters remaining:', solver.lettersRemaining);
     console.log('Total guesses:', solver.guesses);
     console.log('Wrong guesses', solver.wrongGuesses);
+    console.log('----------------------------------------');
 
     if (solver.isSolved) {
       console.log('Solved!');

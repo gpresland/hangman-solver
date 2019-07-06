@@ -39,7 +39,7 @@ var hangman_solver_1 = require("./hangman-solver");
 var solver = new hangman_solver_1.HangmanSolver();
 function init() {
     return __awaiter(this, void 0, void 0, function () {
-        var bestGuess;
+        var bestGuess, isCorrectGuess;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, solver.Init()];
@@ -54,13 +54,15 @@ function init() {
                     bestGuess = solver.getMostCommonLetter();
                     return [4 /*yield*/, solver.guess(bestGuess)];
                 case 3:
-                    _a.sent();
+                    isCorrectGuess = _a.sent();
                     console.log('Guessing:', bestGuess);
+                    console.log('Guess was: ', isCorrectGuess ? 'Correct' : 'Incorrect');
                     console.log('Word is:', solver.word);
                     console.log('Remaining Words:', solver.remainingWords.length);
                     console.log('Letters remaining:', solver.lettersRemaining);
                     console.log('Total guesses:', solver.guesses);
                     console.log('Wrong guesses', solver.wrongGuesses);
+                    console.log('----------------------------------------');
                     if (solver.isSolved) {
                         console.log('Solved!');
                     }

@@ -56,6 +56,10 @@ var HangmanSolver = /** @class */ (function () {
          */
         this._allWords = [];
         /**
+         * Number of correct guesses.
+         */
+        this._correctGuesses = 0;
+        /**
          * Number of guesses used.
          */
         this._guesses = 0;
@@ -87,6 +91,16 @@ var HangmanSolver = /** @class */ (function () {
          */
         get: function () {
             return this._allWords;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(HangmanSolver.prototype, "correctGuesses", {
+        /**
+         * Number of correct guesses.
+         */
+        get: function () {
+            return this._correctGuesses;
         },
         enumerable: true,
         configurable: true
@@ -188,10 +202,16 @@ var HangmanSolver = /** @class */ (function () {
         var _this = this;
         var counts = {};
         lodash_1.forEach(this._remainingWords, function (word) {
+            var letters = [];
             lodash_1.forEach(word, function (letter) {
+                var isDuplicate = lodash_1.includes(letters, letter);
+                if (isDuplicate) {
+                    return;
+                }
                 var count = lodash_1.get(counts, letter, 0);
                 var newCount = count + 1;
                 lodash_1.set(counts, letter, newCount);
+                letters.push(letter);
             });
         });
         var mostCommonLetter = '';
@@ -208,16 +228,17 @@ var HangmanSolver = /** @class */ (function () {
     /*
      * Guess a letter.
      * @param letter The letter to guess.
+     * @returns true if
      */
     HangmanSolver.prototype.guess = function (letter) {
         return __awaiter(this, void 0, void 0, function () {
-            var isAlreadyGuessed, response, isCorrect;
+            var isAlreadyGuessed, response, isCorrect, indices_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         isAlreadyGuessed = lodash_1.includes(this._remainingWords, letter);
                         if (isAlreadyGuessed) {
-                            return [2 /*return*/];
+                            return [2 /*return*/, Promise.reject(false)];
                         }
                         return [4 /*yield*/, axios_1.default({
                                 url: URL,
@@ -232,16 +253,26 @@ var HangmanSolver = /** @class */ (function () {
                             })];
                     case 1:
                         response = _a.sent();
-                        isCorrect = lodash_1.get(response.data, 'correct');
-                        if (!isCorrect) {
-                            this._wrongGuesses += 1;
-                        }
                         this._token = lodash_1.get(response.data, 'token');
                         this._word = lodash_1.get(response.data, 'hangman');
                         this._lettersGuessed.push(letter);
                         this._guesses += 1;
-                        this.updateRemainingWords();
-                        return [2 /*return*/];
+                        isCorrect = lodash_1.get(response.data, 'correct');
+                        if (isCorrect) {
+                            this._correctGuesses += 1;
+                            indices_1 = [];
+                            lodash_1.forEach(this._word, function (lett, index) {
+                                if (lett === letter) {
+                                    indices_1.push(index);
+                                }
+                            });
+                            this._remainingWords = HangmanSolver.predicates.includes(this._remainingWords, letter, indices_1);
+                        }
+                        else {
+                            this._wrongGuesses += 1;
+                            this._remainingWords = HangmanSolver.predicates.excludes(this._remainingWords, letter);
+                        }
+                        return [2 /*return*/, Promise.resolve(isCorrect)];
                 }
             });
         });
@@ -262,7 +293,7 @@ var HangmanSolver = /** @class */ (function () {
                         return [4 /*yield*/, Promise.all(initializers)];
                     case 1:
                         _a.sent();
-                        this.updateRemainingWords();
+                        this._remainingWords = HangmanSolver.predicates.length(this._allWords, this._word.length);
                         return [2 /*return*/];
                 }
             });
@@ -306,23 +337,18 @@ var HangmanSolver = /** @class */ (function () {
         });
     };
     /**
-     * Updates the list of remaining words.
+     * Word filtering predicates.
      */
-    HangmanSolver.prototype.updateRemainingWords = function () {
-        var _this = this;
-        var wordChars = this._word.split('');
-        this._remainingWords = this._allWords.filter(function (remainingWord) {
-            if (remainingWord.length !== _this.wordLength) {
-                return false;
-            }
-            var remainingChars = remainingWord.split('');
-            return remainingChars.every(function (char, i) {
-                if (wordChars[i] == UNKNOWN_LETTER_CHARACTER) {
-                    return true;
-                }
-                return char == wordChars[i];
-            });
-        });
+    HangmanSolver.predicates = {
+        excludes: function (words, letter) {
+            return words.filter(function (word) { return !lodash_1.includes(word, letter); });
+        },
+        includes: function (words, letter, positions) {
+            return words.filter(function (word) { return lodash_1.includes(word, letter) && positions.every(function (position) { return word[position] == letter; }); });
+        },
+        length: function (words, length) {
+            return words.filter(function (word) { return word.length === length; });
+        }
     };
     /**
      * Letters of the alphabet.

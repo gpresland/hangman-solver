@@ -11,6 +11,18 @@ const UNKNOWN_LETTER_CHARACTER = '_';
 class HangmanSolver {
 
   /**
+   * Word filtering predicates.
+   */
+  private static predicates = {
+    excludes: (words: string[], letter: string) =>
+      words.filter(word => !includes(word, letter)),
+    includes: (words: string[], letter: string, positions: number[]) =>
+      words.filter(word => includes(word, letter) && positions.every(position => word[position] == letter)),
+    length: (words: string[], length: number) =>
+      words.filter(word => word.length === length)
+  };
+
+  /**
    * Letters of the alphabet.
    */
   public static LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
@@ -19,6 +31,11 @@ class HangmanSolver {
    * List of all legal words.
    */
   private _allWords: string[] = [];
+
+  /**
+   * Number of correct guesses.
+   */
+  private _correctGuesses = 0;
 
   /**
    * Number of guesses used.
@@ -62,6 +79,13 @@ class HangmanSolver {
    */
   public get allWords() {
     return this._allWords;
+  }
+
+  /**
+   * Number of correct guesses.
+   */
+  public get correctGuesses() {
+    return this._correctGuesses;
   }
 
   /**
@@ -134,11 +158,21 @@ class HangmanSolver {
     const counts = {};
 
     forEach(this._remainingWords, word => {
+      const letters: string[] = [];
+
       forEach(word, letter => {
+        const isDuplicate = includes(letters, letter);
+
+        if (isDuplicate) {
+          return;
+        }
+
         const count = get(counts, letter, 0);
         const newCount = count + 1;
 
-        set(counts, letter, newCount)
+        set(counts, letter, newCount);
+
+        letters.push(letter);
       });
     });
 
@@ -160,12 +194,13 @@ class HangmanSolver {
   /*
    * Guess a letter.
    * @param letter The letter to guess.
+   * @returns true if
    */
-  public async guess(letter: string) {
+  public async guess(letter: string): Promise<boolean> {
     const isAlreadyGuessed = includes(this._remainingWords, letter);
 
     if (isAlreadyGuessed) {
-      return;
+      return Promise.reject(false);
     }
 
     const response = await axios({
@@ -180,18 +215,28 @@ class HangmanSolver {
       })
     });
 
-    const isCorrect = get(response.data, 'correct');
-
-    if (!isCorrect) {
-      this._wrongGuesses += 1;
-    }
-
     this._token = get(response.data, 'token');
     this._word = get(response.data, 'hangman');
     this._lettersGuessed.push(letter);
     this._guesses += 1;
 
-    this.updateRemainingWords();
+    const isCorrect = get(response.data, 'correct');
+
+    if (isCorrect) {
+      this._correctGuesses += 1;
+      const indices: number[] = [];
+      forEach(this._word, (lett, index) => {
+        if (lett === letter) {
+          indices.push(index);
+        }
+      });
+      this._remainingWords = HangmanSolver.predicates.includes(this._remainingWords, letter, indices);
+    } else {
+      this._wrongGuesses += 1;
+      this._remainingWords = HangmanSolver.predicates.excludes(this._remainingWords, letter);
+    }
+
+    return Promise.resolve(isCorrect);
   }
 
   /**
@@ -205,7 +250,7 @@ class HangmanSolver {
 
     await Promise.all(initializers);
 
-    this.updateRemainingWords();
+    this._remainingWords = HangmanSolver.predicates.length(this._allWords, this._word.length);
   }
 
   /**
@@ -236,26 +281,6 @@ class HangmanSolver {
         this._word = get(response.data, 'hangman')
         this._token = get(response.data, 'token');
       });
-  }
-
-  /**
-   * Updates the list of remaining words.
-   */
-  private updateRemainingWords() {
-    const wordChars = this._word.split('');
-
-    this._remainingWords = this._allWords.filter(remainingWord => {
-      if (remainingWord.length !== this.wordLength) {
-        return false;
-      }
-      const remainingChars = remainingWord.split('');
-      return remainingChars.every((char, i) => {
-        if (wordChars[i] == UNKNOWN_LETTER_CHARACTER) {
-          return true;
-        }
-        return char == wordChars[i];
-      });
-    });
   }
 }
 
